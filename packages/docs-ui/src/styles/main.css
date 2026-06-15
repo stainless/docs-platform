@@ -222,6 +222,12 @@
   .stldocs-property-deprecated-message {
     color: var(--stl-color-red-foreground);
     font-size: var(--stl-typography-scale-sm);
+    overflow-wrap: anywhere;
+
+    .stldocs-content {
+      color: inherit;
+      font-size: inherit;
+    }
   }
   .stldocs-property-declaration {
     white-space: nowrap;

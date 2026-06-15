@@ -109,7 +109,11 @@ export function Property({
 
   const textContent = (
     <>
-      {typeof deprecated === 'string' && <div className={style.PropertyDeprecatedMessage}>{deprecated}</div>}
+      {typeof deprecated === 'string' && (
+        <div className={style.PropertyDeprecatedMessage}>
+          <Docs.Markdown content={deprecated} />
+        </div>
+      )}
       {descRest && <Docs.PropertyDescription description={descRest} />}
       {constraints ? <div className={style.PropertyContent}>{constraints}</div> : null}
     </>
