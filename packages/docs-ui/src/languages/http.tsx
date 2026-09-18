@@ -6,6 +6,7 @@ import {
   useLanguageComponents,
   useNavigation,
   useSpec,
+  useSettings,
 } from '../contexts';
 import { useComponents } from '../contexts/use-components';
 import style from '../style';
@@ -14,7 +15,7 @@ import { PropertyFn } from '.';
 import { PropertyToggle, useStreamingResponse } from '../components';
 import { generateRoute, LanguageNames } from '../routing';
 import clsx from 'clsx';
-import { AssertExhaustive, getBodyParams, HttpBodyEncoding } from '../utils';
+import { AssertExhaustive, getBodyParams, hasExpandableProperties, HttpBodyEncoding } from '../utils';
 import { Badge } from '@stainless-api/ui-primitives';
 import { BracesIcon, FormIcon } from 'lucide-react';
 
@@ -247,21 +248,35 @@ export function MethodInfo({ decl, children }: MethodSignatureProps & { children
   const streamingResponse = useStreamingResponse(decl);
   const implementedLanguages = useAvailableLanguages(decl.stainlessPath);
   const { basePath } = useNavigation();
+  const spec = useSpec();
+  const language = useLanguage();
+  const declarations = spec?.decls?.[language];
+  const collapseDescription = useSettings()?.properties?.collapseDescription ?? true;
+  const includeModelProperties = useSettings()?.properties?.includeModelProperties ?? true;
 
   const params = Object.entries(decl.paramsChildren!)
     .filter(([, value]) => value.length)
-    .map(([location, value]) => (
-      <React.Fragment key={location}>
-        <div className={style.MethodParameters} data-stldocs-property-group={location.at(0)}>
-          <h5>
-            {location.at(0)!.toUpperCase()}
-            {location.slice(1)} Parameters
-            <PropertyToggle target={location.at(0)!} />
-          </h5>
-          <Docs.SDKChildren paths={value} />
-        </div>
-      </React.Fragment>
-    ));
+    .map(([location, value]) => {
+      const showToggle = hasExpandableProperties(
+        value,
+        declarations,
+        collapseDescription,
+        includeModelProperties,
+      );
+
+      return (
+        <React.Fragment key={location}>
+          <div className={style.MethodParameters} data-stldocs-property-group={location.at(0)}>
+            <h5>
+              {location.at(0)!.toUpperCase()}
+              {location.slice(1)} Parameters
+              {showToggle && <PropertyToggle target={location.at(0)!} />}
+            </h5>
+            <Docs.SDKChildren paths={value} />
+          </div>
+        </React.Fragment>
+      );
+    });
 
   const bodyParams = getBodyParams(decl);
   if (bodyParams && bodyParams.params.length > 0)
@@ -269,7 +284,12 @@ export function MethodInfo({ decl, children }: MethodSignatureProps & { children
       <div className={style.MethodInfoSection} key="method-info-section">
         <h5>
           <span>Body Parameters{EncodingBadges[bodyParams.encoding]}</span>
-          <PropertyToggle target="body" />
+          {hasExpandableProperties(
+            bodyParams.params,
+            declarations,
+            collapseDescription,
+            includeModelProperties,
+          ) && <PropertyToggle target="body" />}
         </h5>
         <div className={style.MethodParameters} data-stldocs-property-group="body">
           <Docs.SDKChildren paths={bodyParams.params} />
@@ -283,6 +303,13 @@ export function MethodInfo({ decl, children }: MethodSignatureProps & { children
       : [];
 
   if (streamingResponse) responseChildren.push(streamingResponse);
+
+  const showResponseToggle = hasExpandableProperties(
+    responseChildren,
+    declarations,
+    collapseDescription,
+    includeModelProperties,
+  );
 
   if (params.length === 0 && responseChildren.length === 0) {
     const availableLanguageLinks = implementedLanguages
@@ -322,7 +349,7 @@ export function MethodInfo({ decl, children }: MethodSignatureProps & { children
         <div className={style.MethodInfoSection}>
           <h5>
             Returns
-            <PropertyToggle target="returns" />
+            {showResponseToggle && <PropertyToggle target="returns" />}
           </h5>
           <div className={style.MethodReturns} data-stldocs-property-group="returns">
             <Docs.SDKChildren paths={responseChildren} />

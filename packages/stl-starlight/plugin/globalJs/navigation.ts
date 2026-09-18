@@ -3,6 +3,7 @@ import { RESOLVED_API_REFERENCE_PATH } from 'virtual:stl-starlight-virtual-modul
 import { updateSelectedLanguage } from '../languages';
 import { navigate } from 'astro:transitions/client';
 import { getPageLoadEvent } from '../helpers/getPageLoadEvent.ts';
+import { getPropertyToggle } from './property-toggle';
 
 import { initDropdown } from '@stainless-api/docs/components/scripts';
 
@@ -39,8 +40,7 @@ document.addEventListener(getPageLoadEvent(), () => {
 });
 
 document.addEventListener('click', (event) => {
-  const toggle =
-    event.target instanceof HTMLElement && event.target.closest('[data-stldocs-property-toggle-expanded]');
+  const toggle = getPropertyToggle(event.target);
   if (!toggle || !(toggle instanceof HTMLElement)) return;
 
   // Toggle the “expanded” state of the toggle
