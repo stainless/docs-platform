@@ -39,6 +39,65 @@ export function isResourceEmpty(resource: SDKJSON.Resource) {
   );
 }
 
+export function hasExpandableProperties(
+  paths: readonly string[],
+  declarations: Record<string, unknown> | undefined,
+  collapseDescription: boolean | 'show-first-line' = true,
+  includeModelProperties: boolean | 'method-page' = true,
+) {
+  function hasExpandableProperty(path: string, seen: Set<string>): boolean {
+    const declaration = declarations?.[path];
+    if (!declaration || typeof declaration !== 'object') return false;
+
+    const kind = 'kind' in declaration ? declaration.kind : undefined;
+    const type = 'type' in declaration ? declaration.type : undefined;
+    const referenceId =
+      typeof kind === 'string' &&
+      kind.endsWith('Reference') &&
+      type &&
+      typeof type === 'object' &&
+      '$ref' in type
+        ? type.$ref
+        : undefined;
+
+    if (
+      typeof referenceId === 'string' &&
+      referenceId !== path &&
+      declarations?.[referenceId] &&
+      !seen.has(referenceId)
+    ) {
+      return hasExpandableProperty(referenceId, new Set(seen).add(referenceId));
+    }
+
+    const children = 'children' in declaration ? declaration.children : undefined;
+    const childrenParentSchema =
+      'childrenParentSchema' in declaration ? declaration.childrenParentSchema : undefined;
+    const isUnion =
+      kind !== 'CLIFlag' &&
+      kind !== 'CLISchemaProperty' &&
+      (childrenParentSchema === 'enum' || childrenParentSchema === 'union');
+    const inlineModelProperties =
+      includeModelProperties === 'method-page' || includeModelProperties !== false;
+    const hasChildren =
+      Array.isArray(children) &&
+      children.length > 0 &&
+      !children.includes(path) &&
+      !(isUnion && childrenParentSchema === 'enum' && children.length === 1) &&
+      (inlineModelProperties || !('modelPath' in declaration));
+
+    if (hasChildren) return true;
+    if (collapseDescription === false || !('docstring' in declaration)) return false;
+
+    const docstring = declaration.docstring;
+    if (typeof docstring !== 'string' || !docstring) return false;
+    if (collapseDescription === true) return true;
+
+    return docstring.indexOf('\n\n') > 0;
+  }
+
+  return paths.some((path) => hasExpandableProperty(path, new Set()));
+}
+
 export type HttpBodyEncoding = 'json' | 'form-data' | 'unknown';
 
 export function getBodyParams(
